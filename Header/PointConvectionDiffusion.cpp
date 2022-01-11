@@ -67,6 +67,7 @@ void AGM::PointConvectionDiffusion::calcRepresentationFormula_cross() {
                     else if (ptr->getCondition() == 'C') return ptr->getMp();
                     else printError("getEachMp");
                 }
+                return pt->getMp();
             };
 
             return (pt->getCondition() == 'I') &&
@@ -242,6 +243,7 @@ void AGM::PointConvectionDiffusion::calcRepresentationFormula_interface() {
             else if (ptr->getCondition() == 'C') return ptr->getMp();
             else printError("getEachMp");
         }
+        return pt->getMp();
     };
 
     double mpw{getEachMp(element[W], element[WN], element[WS])};
@@ -395,6 +397,7 @@ void AGM::PointConvectionDiffusion::makeDifferentiation_cross() {
                     else if (ptr->getCondition() == 'C') return ptr->getMp();
                     else printError("getEachMp");
                 }
+                return pt->getMp();
             };
 
             return (pt->getCondition() == 'I') &&
@@ -533,6 +536,7 @@ void AGM::PointConvectionDiffusion::makeDifferentiation_interface() {
             else if (ptr->getCondition() == 'C') return ptr->getMp();
             else printError("getEachMp");
         }
+        return pt->getMp();
     };
 
     double mpw{getEachMp(element[W], element[WN], element[WS])};

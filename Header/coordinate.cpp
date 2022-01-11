@@ -36,6 +36,7 @@ double &AGM::Coordinate::operator[](int i) {
     } else {
         printError("Coordinate::operator[]", "input = %d", i);
     }
+    return x;
 }
 
 const double &AGM::Coordinate::operator[](int i) const {
@@ -46,6 +47,7 @@ const double &AGM::Coordinate::operator[](int i) const {
     } else {
         printError("Coordinate::operator[]", "input = %d", i);
     }
+    return x;
 }
 
 AGM::Coordinate AGM::Coordinate::operator+(const AGM::Coordinate &src) const {

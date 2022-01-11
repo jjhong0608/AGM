@@ -126,7 +126,7 @@ void AGM::matrixEIGEN<pt>::calculateMatrix() {
                 rb[j] += ent_t[k] * rb0[ja_t[k]];
             }
         }
-    };
+    }
 
     int nrhs{1};
     void *ppt[64];

@@ -5,6 +5,10 @@
 #include "function2D.h"
 
 double AGM::function2D::u() const {
+    // Blood vessel
+    double inlet{152.08023182730508 * std::sqrt(std::pow(x - 3.53019, 2) + std::pow(y + 16.5045, 2)) *
+                 std::sqrt(std::pow(x - 3.67544, 2) + std::pow(y + 16.327, 2))};
+    return inlet;
     // Kalman vortex
     double a{HALFVALUE};
     if (pow(x, 2) + pow(y, 2) < pow(0.51, 2)) {
@@ -28,6 +32,10 @@ double AGM::function2D::u() const {
 }
 
 double AGM::function2D::v() const {
+    // Blood vessel
+    double inlet{150.4590404705243 * std::sqrt(std::pow(x - 3.6762, 2) + std::pow(y + 16.3269, 2)) *
+                 std::sqrt(std::pow(x - 3.53233, 2) + std::pow(y + 16.5071, 2))};
+    return inlet;
     // Kalman vortex
 //    double a{HALFVALUE};
 //    if (pow(x, 2) + pow(y, 2) < pow(0.51, 2)) {

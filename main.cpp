@@ -4,7 +4,7 @@
 #include "Header/PointConvectionDiffusion.h"
 #include <sys/resource.h>
 
-auto ElapsedTime = std::ofstream("ElapsedTime");
+std::ofstream ElapsedTime("ElapsedTime");
 
 int main() {
     struct rlimit rlim{};
@@ -23,15 +23,34 @@ int main() {
     std::for_each(pts.begin(), pts.end(), [&](AGM::Point &pt) -> void { pt.findElement(&xline, &yline); });
     std::for_each(pts.begin(), pts.end(), [&](AGM::Point &pt) -> void { pt.findElement1(&xline, &yline); });
 
+    /* ---- */
+
+//    std::ofstream xaxial("/home/jjhong0608/docker/AGM_test/xaxialWavy");
+//    std::ofstream yaxial("/home/jjhong0608/docker/AGM_test/yaxialWavy");
+//
+//    for (auto &item: xline) {
+//        xaxial << item[0] << "\t" << item[1] << "\t" << item[2] << "\n";
+//    }
+//    for (auto &item: yline) {
+//        yaxial << item[0] << "\t" << item[1] << "\t" << item[2] << "\n";
+//    }
+//
+//    xaxial.close();
+//    yaxial.close();
+//
+//    exit(1);
+
+    /* ---- */
+
     auto solver = AGM::solver(&pts, &xline, &yline);
 
-    auto velocities = solver.NavierStokesSolver();
+//    auto velocities = solver.NavierStokesSolver();
 //    solver.streamSolver();
-//    solver.ellipticSolver();
+    solver.ellipticSolver();
 //    solver.heatSolver();
 
-    auto wf = AGM::WriteFileNS<AGM::Point, AGM::PointHeat>(&pts, &velocities.first, &velocities.second);
-//    auto wf = AGM::WriteFile<AGM::Point>(&pts);
+//    auto wf = AGM::WriteFileNS<AGM::Point, AGM::PointHeat>(&pts, &velocities.first, &velocities.second);
+    auto wf = AGM::WriteFile<AGM::Point>(&pts);
 //    auto wf = AGM::WriteFile<AGM::PointHeat>(&velocities.first);
 
     wf.writeResult("/home/jjhong0608/docker/AGM_test/AGM_Result");
@@ -77,17 +96,17 @@ int main() {
         std::cout << std::setw(32) << std::left << "The number of y-axial lines = " << yline.size() << std::endl;
     };
 
-    AGM::PointHeat::setPtsH(&velocities.first);
-    for (auto &item : velocities.first) {
-        item.findElement(&pts);
-    }
-    AGM::PointHeat::setPtsH(&velocities.second);
-    for (auto &item : velocities.second) {
-        item.findElement(&pts);
-    }
+//    AGM::PointHeat::setPtsH(&velocities.first);
+//    for (auto &item : velocities.first) {
+//        item.findElement(&pts);
+//    }
+//    AGM::PointHeat::setPtsH(&velocities.second);
+//    for (auto &item : velocities.second) {
+//        item.findElement(&pts);
+//    }
 
-//    printSingleError();
-    printMultipleError();
+    printSingleError();
+//    printMultipleError();
 
     auto end_total = std::chrono::high_resolution_clock::now();
 

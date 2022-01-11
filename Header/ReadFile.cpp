@@ -28,7 +28,7 @@ void AGM::ReadFile::loadAxialData(const std::string& filename, std::vector<AGM::
 
     while (!f.eof()) {
         std::getline(f, line);
-        if (line.empty()) getline(f, line);
+        if (line.empty()) std::getline(f, line);
         if (line.find("ENDREGION") != std::string::npos) {
             idx = 0;
             std::getline(f, line);
@@ -119,6 +119,7 @@ void AGM::ReadFile::loadAxialData(const std::string& filename, std::vector<AGM::
             }
         }
     }
+    f.close();
 
     auto xAxialLine = AGM::AxialLine('x');
     auto yAxialLine = AGM::AxialLine('y');

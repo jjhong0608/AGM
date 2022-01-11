@@ -14,6 +14,7 @@ namespace AGM {
     private:
         char mark{};
         std::array<double, 3> coordinate{};
+
     public:
         AxialLine();
 

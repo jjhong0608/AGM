@@ -38,7 +38,7 @@ namespace AGM {
 
         double calculateIterationError(std::vector<Value> *values);
 
-        virtual void writeResult(const std::string &point);
+        virtual void writeResult(const std::string &string);
     };
 
     template<typename T1, typename T2>

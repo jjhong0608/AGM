@@ -53,16 +53,16 @@ void AGM::solver::ellipticSolver() {
         return ZEROVALUE;
     };
 
-    std::for_each(pts->begin(), pts->end(), [&](Point &pt) -> void {
-        f.setPoint(pt);
-        f.setEps(pt.getMp());
-        if (pt.getCondition() == 'D') {
-            pt["bdv"] = f.u();
-        }
-        if (pt.getCondition() == 'N') {
-            pt["bdv"] = f.dx() * pt.getNormal()[0] + f.dy() * pt.getNormal()[1];
-        }
-    });
+//    std::for_each(pts->begin(), pts->end(), [&](Point &pt) -> void {
+//        f.setPoint(pt);
+//        f.setEps(pt.getMp());
+//        if (pt.getCondition() == 'D') {
+//            pt["bdv"] = f.u();
+//        }
+//        if (pt.getCondition() == 'N') {
+//            pt["bdv"] = f.dx() * pt.getNormal()[0] + f.dy() * pt.getNormal()[1];
+//        }
+//    });
 
     std::for_each(pts->begin(), pts->end(), [&](Point &pt) -> void {
         pt.makeDifferentiation();
@@ -70,6 +70,34 @@ void AGM::solver::ellipticSolver() {
         pt.updateRb(rhs, rhs);
         pt.updateRb_t(rhs_x_t, rhs_y_t);
     });
+
+
+    for (auto &pt: *pts) {
+        for (auto &item: pt.getMatrixRow()[0]) {
+            if (std::isnan(item.value)) {
+                pt.printInformation();
+                std::cout << "find NaN0\n";
+                exit(1);
+            }
+        }
+        for (auto &item: pt.getMatrixRow()[1]) {
+            if (std::isnan(item.value)) {
+                pt.printInformation();
+                std::cout << "find NaN1\n";
+                exit(1);
+            }
+        }
+        if (std::isnan(pt.getRb()[0])) {
+            pt.printInformation();
+            std::cout << "find NaN0 rb\n";
+            exit(1);
+        }
+        if (std::isnan(pt.getRb()[1])) {
+            pt.printInformation();
+            std::cout << "find NaN1 rb\n";
+            exit(1);
+        }
+    }
 
     auto matrix = AGM::matrix<Point>(pts);
 //    auto matrix = AGM::matrixEIGEN<Point>(pts, fixed_idx);
@@ -80,18 +108,18 @@ void AGM::solver::ellipticSolver() {
         pt.calcDifferentiation(rhs, rhs, rhs_x_t, rhs_y_t);
     });
 
-    std::for_each(pts->begin(), pts->end(), [&](Point &pt) -> void {
-        f.setPoint(pt);
-        f.setEps(pt.getMp());
-        if (pt.getCondition() == 'D') {
-            pt["dx"] = f.dx();
-            pt["dy"] = f.dy();
-        }
-        if (pt.getCondition() == 'N') {
-            pt["dx"] = f.dx();
-            pt["dy"] = f.dy();
-        }
-    });
+//    std::for_each(pts->begin(), pts->end(), [&](Point &pt) -> void {
+//        f.setPoint(pt);
+//        f.setEps(pt.getMp());
+//        if (pt.getCondition() == 'D') {
+//            pt["dx"] = f.dx();
+//            pt["dy"] = f.dy();
+//        }
+//        if (pt.getCondition() == 'N') {
+//            pt["dx"] = f.dx();
+//            pt["dy"] = f.dy();
+//        }
+//    });
 }
 
 void AGM::solver::streamSolver() {
@@ -619,7 +647,7 @@ std::pair<std::vector<AGM::PointHeat>, std::vector<AGM::PointHeat>> AGM::solver:
     auto uvel = std::vector<PointHeat>(Point::getPtsnum());
     auto vvel = std::vector<PointHeat>(Point::getPtsnum());
     PointHeat::setTime(0);
-    PointHeat::setDelta(0.005);
+    PointHeat::setDelta(0.0025 / 4);
     double terminal{251};
     auto puvel = std::vector<Value>(Point::getPtsnum());
     auto pvvel = std::vector<Value>(Point::getPtsnum());
@@ -710,12 +738,16 @@ std::pair<std::vector<AGM::PointHeat>, std::vector<AGM::PointHeat>> AGM::solver:
     };
     int nIter{}, fixed{}, nDiv{};
 
-//    auto NS = std::ifstream("/home/jjhong0608/docker/AGM_test/ExternalFlow/test/Re100_7/AGM_Result_2");
+//    auto NS = std::ifstream("/home/jjhong0608/docker/AGM_test/BloodVessel/AGM_Result_243");
 //    if (NS.fail()) {
 //        printError("file is not opened");
 //    }
 //    int idx{};
 //    double x{}, y{}, p{}, px{}, py{};
+
+    std::vector<Point *> LCX3_P{}, MARG2_P{}, MARG3_P{};
+    std::vector<PointHeat *> LCX3_U{}, MARG2_U{}, MARG3_U{};
+    std::vector<PointHeat *> LCX3_V{}, MARG2_V{}, MARG3_V{};
 
     auto assignInitial = [&]() -> void {
         auto f = function2D();
@@ -737,7 +769,7 @@ std::pair<std::vector<AGM::PointHeat>, std::vector<AGM::PointHeat>> AGM::solver:
             ppvvel.at(j)["dy"] = f.vy();
             f.setTime(PointHeat::getTime());
             f.setPoint(uvel.at(j));
-            puvel.at(j)["sol"] = UNITVALUE;
+            puvel.at(j)["sol"] = ZEROVALUE;
             puvel.at(j)["rhs"] = f.f1();
             puvel.at(j)["phi"] = f.phi();
             puvel.at(j)["dx"] = f.ux();
@@ -748,6 +780,12 @@ std::pair<std::vector<AGM::PointHeat>, std::vector<AGM::PointHeat>> AGM::solver:
             pvvel.at(j)["phi"] = f.psi();
             pvvel.at(j)["dx"] = f.vx();
             pvvel.at(j)["dy"] = f.vy();
+            if (pts->at(j).getCondition() == 'D') {
+                if (isclose(pts->at(j)["bdv"], UNITVALUE)) {
+                    puvel.at(j)["bdv"] = -f.u() * pts->at(j).getNormal()[0];
+                    pvvel.at(j)["bdv"] = -f.v() * pts->at(j).getNormal()[1];
+                }
+            }
 
 //            NS >> idx >> x >> y >> puvel.at(idx)["sol"] >> pvvel.at(idx)["sol"] >> ppvel.at(idx)["sol"]
 //               >> puvel.at(idx)["dx"] >> puvel.at(idx)["dy"] >> pvvel.at(idx)["dx"] >> pvvel.at(idx)["dy"]
@@ -756,26 +794,48 @@ std::pair<std::vector<AGM::PointHeat>, std::vector<AGM::PointHeat>> AGM::solver:
 
             f.setTime(PointHeat::getTime() + PointHeat::getDelta());
             f.setPoint(uvel.at(j));
-            uvel.at(j)["sol"] = f.u();
-            uvel.at(j)["bdv"] = f.u();
+//            uvel.at(j)["sol"] = f.u();
+//            uvel.at(j)["bdv"] = f.u();
             uvel.at(j)["rhs"] = f.f1();
             uvel.at(j)["dx"] = f.ux();
             uvel.at(j)["dy"] = f.uy();
             f.setPoint(vvel.at(j));
-            vvel.at(j)["sol"] = f.v();
-            vvel.at(j)["bdv"] = f.v();
+//            vvel.at(j)["sol"] = f.v();
+//            vvel.at(j)["bdv"] = f.v();
             vvel.at(j)["rhs"] = f.f2();
             vvel.at(j)["dx"] = f.vx();
             vvel.at(j)["dy"] = f.vy();
             pts->at(j)["sol"] = f.p();
-            pts->at(j)["bdv"] = ZEROVALUE;
+//            pts->at(j)["bdv"] = ZEROVALUE;
             pts->at(j)["dx"] = f.px();
             pts->at(j)["dy"] = f.py();
             pts->at(j).setMp(UNITVALUE);
             if (pts->at(j).getCondition() == 'D') {
+                if (isclose(pts->at(j)["bdv"], UNITVALUE)) {
+                    uvel.at(j)["bdv"] = -f.u() * pts->at(j).getNormal()[0];
+                    vvel.at(j)["bdv"] = -f.v() * pts->at(j).getNormal()[1];
+                    uvel.at(j)["sol"] = -f.u() * pts->at(j).getNormal()[0];
+                    vvel.at(j)["sol"] = -f.v() * pts->at(j).getNormal()[1];
+                } else {
+                    uvel.at(j)["bdv"] = ZEROVALUE;
+                    vvel.at(j)["bdv"] = ZEROVALUE;
+                }
                 pts->at(j).setCondition('N');
                 pts->at(j)["bdv"] = ZEROVALUE;
             } else if (pts->at(j).getCondition() == 'N') {
+                if (isclose(pts->at(j)["bdv"], ZEROVALUE)) {
+                    LCX3_P.emplace_back(&(pts->at(j)));
+                    LCX3_U.emplace_back(&(uvel.at(j)));
+                    LCX3_V.emplace_back(&(vvel.at(j)));
+                } else if (isclose(pts->at(j)["bdv"], UNITVALUE)) {
+                    MARG2_P.emplace_back(&(pts->at(j)));
+                    MARG2_U.emplace_back(&(uvel.at(j)));
+                    MARG2_V.emplace_back(&(vvel.at(j)));
+                } else {
+                    MARG3_P.emplace_back(&(pts->at(j)));
+                    MARG3_U.emplace_back(&(uvel.at(j)));
+                    MARG3_V.emplace_back(&(vvel.at(j)));
+                }
                 uvel.at(j)["bdv"] = ZEROVALUE;
                 vvel.at(j)["bdv"] = ZEROVALUE;
                 pts->at(j)["bdv"] = ZEROVALUE;
@@ -790,21 +850,47 @@ std::pair<std::vector<AGM::PointHeat>, std::vector<AGM::PointHeat>> AGM::solver:
     auto assignBoundaryvalue = [&]() -> void {
         #pragma omp single
         {
+            double LCX3_Q{}, MARG2_Q{}, MARG3_Q{};
+            for (int j = 0; j < LCX3_P.size() - 1; ++j) {
+                LCX3_Q += (LCX3_U.at(j)->getValue()["sol"] * LCX3_U.at(j)->getNormal()[0] +
+                           LCX3_V.at(j)->getValue()["sol"] * LCX3_V.at(j)->getNormal()[1]) *
+                          (*LCX3_P.at(j) - *LCX3_P.at(j + 1)) * HALFVALUE;
+            }
+            for (int j = 0; j < MARG2_P.size() - 1; ++j) {
+                MARG2_Q += (MARG2_U.at(j)->getValue()["sol"] * MARG2_U.at(j)->getNormal()[0] +
+                            MARG2_V.at(j)->getValue()["sol"] * MARG2_V.at(j)->getNormal()[1]) *
+                           (*MARG2_P.at(j) - *MARG2_P.at(j + 1)) * HALFVALUE;
+            }
+            for (int j = 0; j < MARG3_P.size() - 1; ++j) {
+                MARG3_Q += (MARG3_U.at(j)->getValue()["sol"] * MARG3_U.at(j)->getNormal()[0] +
+                            MARG3_V.at(j)->getValue()["sol"] * MARG3_V.at(j)->getNormal()[1]) *
+                           (*MARG3_P.at(j) - *MARG3_P.at(j + 1)) * HALFVALUE;
+            }
+            for (auto &p: LCX3_P) {
+                p->getValue()["bdv"] = 0.38 * 0.12 * LCX3_Q * 1333E0;
+            }
+            for (auto &p: MARG2_P) {
+                p->getValue()["bdv"] = 1.17 * 0.12 * MARG2_Q * 1333E0;
+            }
+            for (auto &p: MARG3_P) {
+                p->getValue()["bdv"] = 1.94 * 0.12 * MARG3_Q * 1333E0;
+            }
             auto f = function2D();
             for (int j = 0; j < Point::getPtsnum(); ++j) {
-                f.setTime(PointHeat::getTime() + PointHeat::getDelta());
-                f.setPoint(uvel.at(j));
-                uvel.at(j)["bdv"] = f.u();
-                uvel.at(j)["rhs"] = f.f1();
-                if (uvel.at(j).getCondition() == 'N') {
-                    uvel.at(j)["bdv"] = ZEROVALUE;
-                }
-                f.setPoint(vvel.at(j));
-                vvel.at(j)["bdv"] = f.v();
-                vvel.at(j)["rhs"] = f.f2();
-                if (vvel.at(j).getCondition() == 'N') {
-                    vvel.at(j)["bdv"] = ZEROVALUE;
-                }
+//                f.setTime(PointHeat::getTime() + PointHeat::getDelta());
+//                f.setPoint(uvel.at(j));
+//                uvel.at(j)["bdv"] = f.u();
+//                uvel.at(j)["rhs"] = f.f1();
+//                if (uvel.at(j).getCondition() == 'N') {
+//                    uvel.at(j)["bdv"] = ZEROVALUE;
+//                }
+//                f.setPoint(vvel.at(j));
+//                vvel.at(j)["bdv"] = f.v();
+//                vvel.at(j)["rhs"] = f.f2();
+//                if (vvel.at(j).getCondition() == 'N') {
+//                    vvel.at(j)["bdv"] = ZEROVALUE;
+//                }
+
             }
         }
     };
@@ -831,7 +917,6 @@ std::pair<std::vector<AGM::PointHeat>, std::vector<AGM::PointHeat>> AGM::solver:
             uvel.at(j).makeDifferentiation();
             uvel.at(j).updateRb(rhs_u_x, rhs_u_y);
             uvel.at(j).updateRb_t(rhs_u_x_t, rhs_u_y_t);
-
         }
         #pragma omp barrier
         #pragma omp single
@@ -861,6 +946,24 @@ std::pair<std::vector<AGM::PointHeat>, std::vector<AGM::PointHeat>> AGM::solver:
         #pragma omp for
         for (int j = 0; j < Point::getPtsnum(); ++j) {
             uvel.at(j).calcDifferentiation(rhs_u_x, rhs_u_y, rhs_u_x_t, rhs_u_y_t);
+            if (std::isnan(uvel.at(j)["dx"])) {
+                if (uvel.at(j)[N]->getIdx() != uvel.at(j).getIdx()) {
+                    uvel.at(j)["dx"] = uvel.at(j)[N]->getValue()["dx"];
+                } else if (uvel.at(j)[S]->getIdx() != uvel.at(j).getIdx()) {
+                    uvel.at(j)["dx"] = uvel.at(j)[S]->getValue()["dx"];
+                } else {
+                    printError("calculateDifferentiation");
+                }
+            }
+            if (std::isnan(uvel.at(j)["dy"])) {
+                if (uvel.at(j)[E]->getIdx() != uvel.at(j).getIdx()) {
+                    uvel.at(j)["dy"] = uvel.at(j)[E]->getValue()["dy"];
+                } else if (uvel.at(j)[W]->getIdx() != uvel.at(j).getIdx()) {
+                    uvel.at(j)["dy"] = uvel.at(j)[W]->getValue()["dy"];
+                } else {
+                    printError("calculateDifferentiation");
+                }
+            }
         }
         #pragma omp barrier
         #pragma omp single
@@ -868,6 +971,24 @@ std::pair<std::vector<AGM::PointHeat>, std::vector<AGM::PointHeat>> AGM::solver:
         #pragma omp for
         for (int j = 0; j < Point::getPtsnum(); ++j) {
             vvel.at(j).calcDifferentiation(rhs_v_x, rhs_v_y, rhs_v_x_t, rhs_v_y_t);
+            if (std::isnan(vvel.at(j)["dx"])) {
+                if (vvel.at(j)[N]->getIdx() != vvel.at(j).getIdx()) {
+                    vvel.at(j)["dx"] = vvel.at(j)[N]->getValue()["dx"];
+                } else if (vvel.at(j)[S]->getIdx() != vvel.at(j).getIdx()) {
+                    vvel.at(j)["dx"] = vvel.at(j)[S]->getValue()["dx"];
+                } else {
+                    printError("calculateDifferentiation");
+                }
+            }
+            if (std::isnan(vvel.at(j)["dy"])) {
+                if (vvel.at(j)[E]->getIdx() != vvel.at(j).getIdx()) {
+                    vvel.at(j)["dy"] = vvel.at(j)[E]->getValue()["dy"];
+                } else if (vvel.at(j)[W]->getIdx() != vvel.at(j).getIdx()) {
+                    vvel.at(j)["dy"] = vvel.at(j)[W]->getValue()["dy"];
+                } else {
+                    printError("calculateDifferentiation");
+                }
+            }
         }
     };
 
@@ -880,6 +1001,24 @@ std::pair<std::vector<AGM::PointHeat>, std::vector<AGM::PointHeat>> AGM::solver:
             d = uvel.at(j)["dx"];
             uvel.at(j).calcDifferentiation(rhs_u_x1, rhs_u_y1, rhs_u_x_t1, rhs_u_y_t1);
             uvel.at(j)["dx"] = d;
+            if (std::isnan(uvel.at(j)["dx"])) {
+                if (uvel.at(j)[N]->getIdx() != uvel.at(j).getIdx()) {
+                    uvel.at(j)["dx"] = uvel.at(j)[N]->getValue()["dx"];
+                } else if (uvel.at(j)[S]->getIdx() != uvel.at(j).getIdx()) {
+                    uvel.at(j)["dx"] = uvel.at(j)[S]->getValue()["dx"];
+                } else {
+                    printError("calculateDifferentiation1");
+                }
+            }
+            if (std::isnan(uvel.at(j)["dy"])) {
+                if (uvel.at(j)[E]->getIdx() != uvel.at(j).getIdx()) {
+                    uvel.at(j)["dy"] = uvel.at(j)[E]->getValue()["dy"];
+                } else if (uvel.at(j)[W]->getIdx() != uvel.at(j).getIdx()) {
+                    uvel.at(j)["dy"] = uvel.at(j)[W]->getValue()["dy"];
+                } else {
+                    printError("calculateDifferentiation1");
+                }
+            }
         }
         #pragma omp barrier
         #pragma omp single
@@ -889,6 +1028,24 @@ std::pair<std::vector<AGM::PointHeat>, std::vector<AGM::PointHeat>> AGM::solver:
             d = vvel.at(j)["dy"];
             vvel.at(j).calcDifferentiation(rhs_v_x1, rhs_v_y1, rhs_v_x_t1, rhs_v_y_t1);
             vvel.at(j)["dy"] = d;
+            if (std::isnan(vvel.at(j)["dx"])) {
+                if (vvel.at(j)[N]->getIdx() != vvel.at(j).getIdx()) {
+                    vvel.at(j)["dx"] = vvel.at(j)[N]->getValue()["dx"];
+                } else if (vvel.at(j)[S]->getIdx() != vvel.at(j).getIdx()) {
+                    vvel.at(j)["dx"] = vvel.at(j)[S]->getValue()["dx"];
+                } else {
+                    printError("calculateDifferentiation1");
+                }
+            }
+            if (std::isnan(vvel.at(j)["dy"])) {
+                if (vvel.at(j)[E]->getIdx() != vvel.at(j).getIdx()) {
+                    vvel.at(j)["dy"] = vvel.at(j)[E]->getValue()["dy"];
+                } else if (vvel.at(j)[W]->getIdx() != vvel.at(j).getIdx()) {
+                    vvel.at(j)["dy"] = vvel.at(j)[W]->getValue()["dy"];
+                } else {
+                    printError("calculateDifferentiation1");
+                }
+            }
         }
     };
 
@@ -896,6 +1053,24 @@ std::pair<std::vector<AGM::PointHeat>, std::vector<AGM::PointHeat>> AGM::solver:
         #pragma omp for
         for (int j = 0; j < Point::getPtsnum(); ++j) {
             pts->at(j).calcDifferentiation(rhs_p_x, rhs_p_y, rhs_p_x_t, rhs_p_y_t, rhs_p_x_diff, rhs_p_y_diff);
+            if (std::isnan(pts->at(j)["dx"])) {
+                if (pts->at(j)[N]->getIdx() != pts->at(j).getIdx()) {
+                    pts->at(j)["dx"] = pts->at(j)[N]->getValue()["dx"];
+                } else if (pts->at(j)[S]->getIdx() != pts->at(j).getIdx()) {
+                    pts->at(j)["dx"] = pts->at(j)[S]->getValue()["dx"];
+                } else {
+                    printError("calculateDifferentiation");
+                }
+            }
+            if (std::isnan(pts->at(j)["dy"])) {
+                if (pts->at(j)[E]->getIdx() != pts->at(j).getIdx()) {
+                    pts->at(j)["dy"] = pts->at(j)[E]->getValue()["dy"];
+                } else if (pts->at(j)[W]->getIdx() != pts->at(j).getIdx()) {
+                    pts->at(j)["dy"] = pts->at(j)[W]->getValue()["dy"];
+                } else {
+                    printError("calculateDifferentiation");
+                }
+            }
         }
     };
 
@@ -990,6 +1165,25 @@ std::pair<std::vector<AGM::PointHeat>, std::vector<AGM::PointHeat>> AGM::solver:
 
     assignInitial();
     findElement();
+    auto comp = [](Point *pt0, Point *pt1) -> bool {
+        double x0{pt0->getCoordinate()[0]}, y0{pt0->getCoordinate()[1]};
+        double x1{pt1->getCoordinate()[0]}, y1{pt1->getCoordinate()[1]};
+        if (isclose(y0, y1)) {
+            return x0 < x1;
+        } else {
+            return y0 < y1;
+        }
+    };
+
+    std::sort(LCX3_P.begin(), LCX3_P.end(), comp);
+    std::sort(LCX3_U.begin(), LCX3_U.end(), comp);
+    std::sort(LCX3_V.begin(), LCX3_V.end(), comp);
+    std::sort(MARG2_P.begin(), MARG2_P.end(), comp);
+    std::sort(MARG2_U.begin(), MARG2_U.end(), comp);
+    std::sort(MARG2_V.begin(), MARG2_V.end(), comp);
+    std::sort(MARG3_P.begin(), MARG3_P.end(), comp);
+    std::sort(MARG3_U.begin(), MARG3_U.end(), comp);
+    std::sort(MARG3_V.begin(), MARG3_V.end(), comp);
 
     auto matrix = matrixTwoDimension<PointHeat>(&uvel, &vvel);
     auto matrixP = AGM::matrix<Point>(pts);
@@ -1000,6 +1194,20 @@ std::pair<std::vector<AGM::PointHeat>, std::vector<AGM::PointHeat>> AGM::solver:
     }
     matrix.makeMatrix();
     matrix.calculateMatrix();
+
+    for (auto &item: uvel) {
+        if (std::isnan(item.getRb()[0])) {
+            std::cout << "nan value found0\n";
+            item.printInformation();
+            exit(1);
+        }
+        if (std::isnan(item.getRb()[1])) {
+            std::cout << "nan value found1\n";
+            item.printInformation();
+            exit(1);
+        }
+    }
+
 
     #pragma omp parallel
     {
@@ -1025,13 +1233,13 @@ std::pair<std::vector<AGM::PointHeat>, std::vector<AGM::PointHeat>> AGM::solver:
 
     auto wf = WriteFileNS<Point, PointHeat>(pts, &uvel, &vvel);
 
-    system("mkdir -p /home/jjhong0608/docker/AGM_test/ExternalFlow/test/Re100_10");
+    system("mkdir -p /home/jjhong0608/docker/AGM_test/BloodVessel9/");
 
     while (PointHeat::getTime() + PointHeat::getDelta() < terminal - HALFVALUE * PointHeat::getDelta()) {
         #pragma omp parallel
         {
             updateTime();
-//            assignBoundaryvalue();
+            assignBoundaryvalue();
             updateRb();
         }
         matrix.calculateMatrix();
@@ -1054,21 +1262,21 @@ std::pair<std::vector<AGM::PointHeat>, std::vector<AGM::PointHeat>> AGM::solver:
             updateValue1();
         }
 
-//        if (checkDiv()) {
-//            wf.writeResult("/home/jjhong0608/docker/AGM_test/ExternalFlow/test/Re240/AGM_Div_" + std::to_string(nDiv));
-//            ++nDiv;
-//            if (std::isnan(wf.calculateError("uvel"))) {
-//                printError("NaN value0");
-//                exit(1);
-//            }
-//        }
-        if (nIter % 20 == 0) {
-            wf.writeResult("/home/jjhong0608/docker/AGM_test/ExternalFlow/test/Re100_10/AGM_Temp_" + std::to_string(nIter / 20));
-            system("python /home/jjhong0608/docker/AGM_test/ExternalFlow/test/calculateDrag.py");
+        if (checkDiv()) {
+            wf.writeResult("/home/jjhong0608/docker/AGM_test/BloodVessel9/AGM_Div_" + std::to_string(nDiv));
+            ++nDiv;
+            if (std::isnan(wf.calculateError("uvel"))) {
+                printError("NaN value0");
+                exit(1);
+            }
         }
+//        if (nIter % 20 == 0) {
+//            wf.writeResult("/home/jjhong0608/docker/AGM_test/ExternalFlow/test/Re200/AGM_Temp_" + std::to_string(nIter / 20));
+//            system("python /home/jjhong0608/docker/AGM_test/ExternalFlow/test/calculateDrag.py");
+//        }
 
-        if (nIter % 200 == 0) {
-            wf.writeResult("/home/jjhong0608/docker/AGM_test/ExternalFlow/test/Re100_10/AGM_Result_" + std::to_string(nIter / 200));
+        if (nIter % 100 == 0) {
+            wf.writeResult("/home/jjhong0608/docker/AGM_test/BloodVessel9/AGM_Result_" + std::to_string(nIter / 100));
             std::cout << std::setw(32) << std::left << "Relative error of u-velocity = " << std::scientific
             << wf.calculateError("uvel") << std::endl;
             std::cout << std::setw(32) << std::left << "Relative error of v-velocity = " << std::scientific

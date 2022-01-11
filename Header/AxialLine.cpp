@@ -8,8 +8,6 @@ AGM::AxialLine::AxialLine() = default;
 
 AGM::AxialLine::AxialLine(char mark) : mark(mark) {}
 
-AGM::AxialLine::~AxialLine() = default;
-
 char AGM::AxialLine::getMark() const {
     return mark;
 }
@@ -21,3 +19,5 @@ void AGM::AxialLine::setMark(char i) {
 double &AGM::AxialLine::operator[](int i) {
     return coordinate[i];
 }
+
+AGM::AxialLine::~AxialLine() = default;

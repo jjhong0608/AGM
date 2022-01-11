@@ -242,14 +242,24 @@ void AGM::Point::findElement(std::vector<AxialLine> *xline, std::vector<AxialLin
                              const EWNS &ewns1, double n) -> void {
         if (element[ewns] == this && n > 1.0E-10) return;
         alin = nullptr;
+//        double lineDist{std::numeric_limits<double>::max()};
+//        double sign = ewns == E || ewns == N ? UNITVALUE : -UNITVALUE;
         if ((!element[ewns]) || element[ewns] == this) {
             for (auto &i : *line) {
-                if (axialLine[idx1] == &i) continue;
+                if (axialLine[idx1] == &i) {
+                    continue;
+                }
+//                if ((sign * (i[0] - (*axialLine[idx1])[0]) > NEARZERO) && (sign * (i[0] - (*axialLine[idx1])[0]) < lineDist)) {
+//                    lineDist = fabs(i[0] - (*axialLine[idx1])[0]);
+//                }
                 if (func(&i, coordinate[idx0], qt) && iscontain(&i, coordinate[idx1])) {
                     alin = &i;
                     qt = (*alin)[0];
                 }
             }
+//            if ((condition == 'D' || condition == 'N') && fabs(lineDist - sign * (qt - (*axialLine[idx1])[0])) > NEARZERO) {
+//                alin = nullptr;
+//            }
             if (alin) {
                 for (auto &i : *alin) {
                     if (isleftpt((*i)[idx1], coordinate[idx1], qtl)) {
@@ -1276,92 +1286,12 @@ AGM::matrix_row AGM::Point::calcRepresentationFormula_neumann_N(std::string &str
 
 void AGM::Point::calcRepresentationFormula_dirichlet_and_Neumann(AGM::Point *pt, const EWNS &ewns, int order) {
     Point point = *pt;
-
-//    /* --- */
-//    auto find_min_point = [&]() -> Point* {
-//        double min_value{1e3};
-//        Point *return_point{};
-//
-//        for (auto &item: getElement().getElement()) {
-//            if (!item) {
-//                continue;
-//            }
-//            if (item->getIdx() == this->getIdx()) {
-//                continue;
-//            }
-//            if (*item - *this < min_value) {
-//                if (item->getCondition() == 'C') {
-//                    min_value = *item - *this;
-//                    return_point = item;
-//                }
-//            }
-//        }
-//        return return_point;
-//    };
-//
-//
-//
-//    if (point.getIdx() == this->getIdx()) {
-//        auto firstOrderExtrapolation_for_no_axial = [&](EWNS ewns0, EWNS ewns1, EWNS ewns2, int c, int c0) -> void {
-//            double t1 = element[ewns0] ? element[ewns0]->getCoordinate()[c] : element[ewns1]->getCoordinate()[c];
-//            double t2 = element1[ewns0] ? element1[ewns0]->getCoordinate()[c] : element1[ewns1]->getCoordinate()[c];
-//            double d = t2 - t1;
-//            if (iszero(d)) {
-//                printError("ZEROVALUE FOUND");
-//            }
-//            double t0 = coordinate[c];
-//            auto firstTerm = [t0, d]() -> double { return t0 / d; };
-//            auto secondTerm = [d](double t) -> double { return t / d; };
-//            auto firstOrder = [&](double t) -> double { return -firstTerm() + secondTerm(t); };
-//            auto interpolation = [&](Point *&pt0, Point *&pt1, double firstOrderValue) -> void {
-//                double tt1 = pt0->getCoordinate()[c0], tt2 = pt1->getCoordinate()[c0], tt0 = coordinate[c0];
-//                matrixRow[1][pt0->getIdx() + ptsnum] = firstOrderValue * (tt0 - tt2) / (tt1 - tt2);
-//                matrixRow[1][pt1->getIdx() + ptsnum] = firstOrderValue * (tt1 - tt0) / (tt1 - tt2);
-//            };
-//            if (element1[ewns0]) {
-//                matrixRow[1][element1[ewns0]->getIdx() + ptsnum] = -firstOrder(t1);
-//            } else {
-//                interpolation(element1[ewns1], element1[ewns2], -firstOrder(t1));
-//            }
-//            if (element[ewns0]) {
-//                matrixRow[1][element[ewns0]->getIdx() + ptsnum] = firstOrder(t2);
-//            } else {
-//                interpolation(element[ewns1], element[ewns2], firstOrder(t2));
-//            }
-//        };
-//        if (std::fabs(normal[0]) < NEARZERO) {
-//            if (normal[1] < ZEROVALUE) {
-//                firstOrderExtrapolation_for_no_axial(N, NE, NW, 1, 0);
-//            } else if (normal[1] > ZEROVALUE) {
-//                firstOrderExtrapolation_for_no_axial(S, SE, SW, 1, 0);
-//            } else {
-//                printInformation();
-//                printError("firstOrderExtrapolation_for_no_axial1");
-//            }
-//        } else {
-//            if (normal[0] < ZEROVALUE) {
-//                firstOrderExtrapolation_for_no_axial(E, EN, ES, 0, 1);
-//            } else if (normal[0] > ZEROVALUE) {
-//                firstOrderExtrapolation_for_no_axial(W, WN, WS, 0, 1);
-//            } else {
-//                printInformation();
-//                printError("firstOrderExtrapolation_for_no_axial0");
-//            }
-//        }
-//        matrixRow[1][idx + ptsnum] = -UNITVALUE;
-//
-////        matrixRow[1][find_min_point()->getIdx() + ptsnum] = UNITVALUE;
-////        matrixRow[1][idx + ptsnum] = UNITVALUE;
-//        return;
-//    }
-//    /* --- */
-
-    double xm = point[W]->getCoordinate()[0];
+    double xm = ewns == E || ewns == W ? point[W]->getCoordinate()[0] : ZEROVALUE;
     double xb = point.getCoordinate()[0];
-    double xp = point[E]->getCoordinate()[0];
-    double ym = point[S]->getCoordinate()[1];
+    double xp = ewns == E || ewns == W ? point[E]->getCoordinate()[0] : ZEROVALUE;
+    double ym = ewns == N || ewns == S ? point[S]->getCoordinate()[1] : ZEROVALUE;
     double yb = point.getCoordinate()[1];
-    double yp = point[N]->getCoordinate()[1];
+    double yp = ewns == N || ewns == S ? point[N]->getCoordinate()[1] : ZEROVALUE;
 
     auto secondOrderExtrapolation = [&](int i, double tm, double tb, double tp, EWNS ewns1, EWNS ewns2) -> void {
         double d = (tp - tm) * (tp - tb) * (tb - tm);
@@ -4285,7 +4215,7 @@ void AGM::Point::printInformation() {
     }
     std::cout << '\t' << "Right-hand side = " << value["rhs"] << '\n';
     if (condition == 'N') {
-        std::cout << '\t' << "normal vector = (" << normal[0] << ", " << normal[1] << '\n';
+        std::cout << '\t' << "normal vector = (" << normal[0] << ", " << normal[1] << ")" << '\n';
     }
     std::array<std::string, 12> elementName{"East", "West", "North", "South", "East-North", "East-South", "West-North",
                                             "West-South", "North-East", "North-West", "South-East", "South-West"};

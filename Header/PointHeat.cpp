@@ -464,7 +464,7 @@ void AGM::PointHeat::calcRepresentationFormula_neumann() {
             }
         }
         for (int i = 0; i < 2; ++i) {
-            if (!row[i].empty()) {
+            if (!row[i].empty() && !iszero(normal[i])) {
                 while (row[i].back().idx >= 4 * ptsnum) {
                     pMatrixRow[i][row[i].back().idx - 4 * ptsnum] = row[i].back().value * normal[i];
                     row[i].pop_back();

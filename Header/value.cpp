@@ -91,6 +91,7 @@ double &AGM::Value::operator[](const std::string &string) {
     if (string == "dyy") return dyy;
     if (string == "dxy") return dxy;
     printError("Value::operator[]", "input = %s", string.c_str());
+    return sol;
 }
 
 const double &AGM::Value::operator[](const std::string &string) const {
@@ -104,6 +105,7 @@ const double &AGM::Value::operator[](const std::string &string) const {
     if (string == "dyy") return dyy;
     if (string == "dxy") return dxy;
     printError("Value::operator[]", "input = %s", string.c_str());
+    return sol;
 }
 
 AGM::Value &AGM::Value::operator=(const AGM::Value &value) {
